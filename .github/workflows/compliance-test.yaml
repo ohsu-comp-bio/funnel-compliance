@@ -7,6 +7,7 @@
 # To use this step uncomment and place anywhere in the build steps. The build will pause on this step and
 # output a ssh address associated with the Github action worker. Helpful for debugging build steps and
 # and intermediary files/artifacts.
+#
 # Example:
 #   Web shell: https://tmate.io/t/q8FU3U9SvmMVxAhMHRyExNhr8
 #   SSH: ssh q8FU3U9SvmMVxAhMHRyExNhr8@sfo2.tmate.io
@@ -23,84 +24,66 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Setup tmate session
-        uses: mxschmitt/action-tmate@v3
-  #   - name: Set up Go 1.x
-  #     uses: actions/setup-go@v2
-  #     with:
-  #       go-version: ^1.18
+    - name: Set up Go 1.x
+      uses: actions/setup-go@v2
+      with:
+        go-version: ^1.18
 
-  #   - name: Check out code
-  #     uses: actions/checkout@v2
+    - name: Check out code
+      uses: actions/checkout@v2
+      repository: ohsu-comp-bio/funnel 
 
-  #   - name: Build
-  #     run: go build -v ./
+    - name: Setup tmate session
+      uses: mxschmitt/action-tmate@v3
 
-  #   - name: Store funnel
-  #     uses: actions/upload-artifact@v2
-  #     with:
-  #       name: funnelBin
-  #       path: funnel
+    - name: Build
+      run: go build -v ./
 
-  # generate-report:
-  #   needs: test-compliance
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/download-artifact@v3
-  #       with:
-  #         name: funnelBin
+    - name: Store funnel
+      uses: actions/upload-artifact@v2
+      with:
+        name: funnelBin
+        path: funnel
 
-  #     - name: Start Funnel server
-  #       run: |
-  #         chmod +x funnel
-  #         ./funnel server run &> funnel.logs &
+  generate-report:
+    needs: test-compliance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: funnelBin
 
-  #     - uses: actions/checkout@v3
-  #       with:
-  #         repository: 'lbeckman314/tes-compliance-suite'
-  #         ref: 'feature/tesv1.1'
+      - name: Start Funnel server
+        run: |
+          chmod +x funnel
+          ./funnel server run &> funnel.logs &
 
-  #     - name: Install TES compliance suite
-  #       run: |
-  #         python -m venv venv
-  #         source venv/bin/activate
-  #         python setup.py install
-  #         mkdir reports
+      - uses: actions/checkout@v3
+        with:
+          repository: 'lbeckman314/tes-compliance-suite'
+          ref: 'feature/tesv1.1'
 
-  #     - name: Test compliance
-  #       run: |
-  #         source venv/bin/activate
-  #         tes-compliance-suite report --version "1.0.0" --version "1.1.0" --server "http://localhost:8000/" \
-  #                                     --output_path reports --serve --uptime 1
+      - name: Install TES compliance suite
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          python setup.py install
+          mkdir reports
 
-  #     - name: Store report
-  #       uses: actions/upload-artifact@v2
-  #       with:
-  #         name: reports
-  #         path: reports/*
+      - name: Test compliance
+        run: |
+          source venv/bin/activate
+          tes-compliance-suite report --version "1.0.0" --version "1.1.0" --server "http://localhost:8000/" \
+                                      --output_path reports --serve --uptime 1
 
-  #     - name: Store web
-  #       uses: actions/upload-artifact@v2
-  #       with:
-  #         name: web
-  #         path: compliance_suite/web/*
-      
-  #     - name: Check out code
-  #       uses: actions/checkout@v2
-  #       with:
-  #         path: funnel
+      - name: Store report
+        uses: actions/upload-artifact@v2
+        with:
+          name: reports
+          path: reports/*
 
-  #     - name: Add compliance web report to Funnel's website
-  #       run: |
-  #         export FUNNEL_WEB_DIR="funnel/website/static/compliance"
-  #         mkdir -p $FUNNEL_WEB_DIR
-  #         cp -r compliance_suite/web/* $FUNNEL_WEB_DIR
-
-  #     - uses: EndBug/add-and-commit@v9
-  #       with:
-  #         cwd: funnel
-  #         add: 'website/static/compliance'
-  #         default_author: github_actions
-  #         message: |
-  #           Commit from GitHub Actions (Compliance Test)
-  #           - [skip ci]
+      - name: Store web
+        uses: actions/upload-artifact@v2
+        with:
+          name: web
+          path: compliance_suite/web/*
