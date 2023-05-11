@@ -20,76 +20,72 @@ name: Compliance Test
 on:
   workflow_dispatch:
 
-env:
-  GH_TOKEN: ${{ secrets.GH_TOKEN }}
-
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
 
-    - name: Setup tmate session
-      uses: mxschmitt/action-tmate@v3
+    - name: Set up Go 1.x
+      uses: actions/setup-go@v2
+      with:
+        go-version: ^1.18
 
+    - name: Check out code
+      uses: actions/checkout@v3
+      with:
+        repository: ohsu-comp-bio/funnel 
 
-  #   - name: Set up Go 1.x
-  #     uses: actions/setup-go@v2
-  #     with:
-  #       go-version: ^1.18
+    - name: Build
+      run: go build -v ./
 
-  #   - name: Check out code
-  #     uses: actions/checkout@v3
-  #     with:
-  #       repository: ohsu-comp-bio/funnel 
+    - name: Store funnel
+      uses: actions/upload-artifact@v2
+      with:
+        name: funnelBin
+        path: funnel
 
-  #   - name: Build
-  #     run: go build -v ./
+  generate-report:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: funnelBin
 
-  #   - name: Store funnel
-  #     uses: actions/upload-artifact@v2
-  #     with:
-  #       name: funnelBin
-  #       path: funnel
+      - name: Start Funnel server
+        run: |
+          chmod +x funnel
+          ./funnel server run &> funnel.logs &
 
-  # generate-report:
-  #   needs: build
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/download-artifact@v3
-  #       with:
-  #         name: funnelBin
+      - uses: actions/checkout@v3
+        with:
+          repository: 'lbeckman314/tes-compliance-suite'
+          ref: 'feature/tesv1.1'
 
-  #     - name: Start Funnel server
-  #       run: |
-  #         chmod +x funnel
-  #         ./funnel server run &> funnel.logs &
+      - name: Install TES compliance suite
+        run: |
+          python -m venv venv
+          source venv/bin/activate
+          python setup.py install
+          mkdir reports
 
-  #     - uses: actions/checkout@v3
-  #       with:
-  #         repository: 'lbeckman314/tes-compliance-suite'
-  #         ref: 'feature/tesv1.1'
+      - name: Test compliance
+        run: |
+          source venv/bin/activate
+          tes-compliance-suite report --version "1.0.0" --version "1.1.0" --server "http://localhost:8000/" \
+                                      --output_path reports --serve --uptime 1
 
-  #     - name: Install TES compliance suite
-  #       run: |
-  #         python -m venv venv
-  #         source venv/bin/activate
-  #         python setup.py install
-  #         mkdir reports
+      - name: Store JSON report
+        uses: actions/upload-artifact@v2
+        with:
+          name: reports
+          path: reports/*
 
-  #     - name: Test compliance
-  #       run: |
-  #         source venv/bin/activate
-  #         tes-compliance-suite report --version "1.0.0" --version "1.1.0" --server "http://localhost:8000/" \
-  #                                     --output_path reports --serve --uptime 1
-
-  #     - name: Store report
-  #       uses: actions/upload-artifact@v2
-  #       with:
-  #         name: reports
-  #         path: reports/*
-
-  #     - name: Store web
-  #       uses: actions/upload-artifact@v2
-  #       with:
-  #         name: web
-  #         path: compliance_suite/web/*
+      - name: Store web report
+        uses: actions/upload-artifact@v2
+        with:
+          name: web
+          path: compliance_suite/web/*
+      
+      - name: Deploy report
+        uses: ./.github/workflows/static.yaml
