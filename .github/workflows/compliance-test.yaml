@@ -21,7 +21,7 @@ on:
   push:
   workflow_dispatch:
   repository_dispatch:
-    types: [start_report]
+    types: [start-report]
  
 
 jobs:
