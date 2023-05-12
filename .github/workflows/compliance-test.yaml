@@ -1,5 +1,10 @@
-# This workflow will install Python dependencies, run tests and lint with a single version of Python
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+# Workflow for generating a publishing the TES compliance test report for Funnel
+# Publishes to https://ohsu-comp-bio.github.io/funnel-compliance/
+
+# This includes the following steps:
+#  1. build: Build Funnel and store the resulting binary artifact
+#  2. generate-report: Install tes-compliance-suite and run against each version of TES independently
+#  3. deploy-report: Use the workflow defined in static.yaml to publish the generated report via Github Pages
 
 # Optionally debug via SSH
 # Ref: https://fleetdm.com/engineering/tips-for-github-actions-usability
@@ -22,7 +27,6 @@ on:
   workflow_dispatch:
   repository_dispatch:
     types: [start-report]
- 
 
 jobs:
   build:
@@ -85,6 +89,7 @@ jobs:
           name: reports
           path: reports/*
 
+      # This will be used by static.yaml as the publishing source
       - name: Store web report
         uses: actions/upload-artifact@v2
         with:
